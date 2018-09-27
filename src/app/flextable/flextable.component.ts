@@ -1,6 +1,7 @@
 import { Component, OnInit, ViewChild } from '@angular/core';
 import { MatSort, MatTableDataSource } from '@angular/material';
-import { PerfectScrollbarConfigInterface,PerfectScrollbarComponent, PerfectScrollbarDirective } from 'ngx-perfect-scrollbar';
+import { PerfectScrollbarConfigInterface, PerfectScrollbarComponent, PerfectScrollbarDirective } from 'ngx-perfect-scrollbar';
+import { SelectionModel } from '@angular/cdk/collections';
 import * as $ from 'jquery';
 
 @Component({
@@ -11,10 +12,11 @@ import * as $ from 'jquery';
 
 export class FlextableComponent implements OnInit {
 
-  displayedColumns = ['position', 'name', 'grade', 'salary'];
+  displayedColumns = ['select', 'position', 'name', 'grade', 'salary'];
   data = Object.assign(ELEMENT_DATA);
   dataSource = new MatTableDataSource<Element>(this.data);
-  // dataSource = ELEMENT_DATA;
+  selection = new SelectionModel<Element>(true, []);
+
   @ViewChild(PerfectScrollbarDirective) directiveRef?: PerfectScrollbarDirective;
   @ViewChild(PerfectScrollbarComponent) componentRef?: PerfectScrollbarComponent;
   @ViewChild(MatSort) sort: MatSort;
@@ -23,26 +25,115 @@ export class FlextableComponent implements OnInit {
 
   ngOnInit() {
     this.dataSource.sort = this.sort;
-    //console.log("OffSet : "+$($("#table")[1]).offset().top());
-  }
-  public scrollToY(grade : any): void { 
-    console.log("Value of grade: "+grade);
-    var indexValue = ELEMENT_DATA.map(function (element) { return element.grade; }).indexOf(grade);
-        
-    console.log("Value of index: "+indexValue);    
-    var position = 60 + (indexValue * 48);
 
-    console.log("Value of position: "+position);
+  }
+  public scrollToY(grade: any): void {
+    var indexValue = ELEMENT_DATA.map(function (element) { return element.grade; }).indexOf(grade);
+    var position = 60 + (indexValue * 49);
     this.componentRef.directiveRef.scrollToY(position, 300);
   }
- 
-  addElement(grade:any) {
-    var index = ELEMENT_DATA.map(function (element) { return element.grade; }).indexOf(grade);
-    console.log("Value of index: "+index);
 
-    ELEMENT_DATA.splice(index,0,{position: index, name: 'Vijay'+1, grade: grade, salary: Math.random()* 10000000000000000 })
+  addElement(grade: any) {
+    var index = ELEMENT_DATA.map((element) => element.grade).indexOf(grade);
+    ELEMENT_DATA.splice(index, 0, { position: index, name: 'Vijay' + index, grade: grade, salary: Math.random() * 10000000000000000 })
     this.dataSource = new MatTableDataSource(ELEMENT_DATA);
   }
+
+  groupCheck(grade: any, currentIndex : number) {
+    var index: number;
+    var nextIndex: number;
+    var nextGrade: any;
+    var defaultNumber:number =1;
+    if (grade == 'G2') {
+      nextGrade = 'G4';
+    } else if (grade == 'G4') {
+      nextGrade = 'G6';
+    } else if (grade == 'G6') {
+      nextGrade = 'G8';
+    }
+    console.log("Grade : " + grade + " nextGrade : " + nextGrade);
+    index = ELEMENT_DATA.map((element) => element.grade).indexOf(grade);
+    nextIndex = ELEMENT_DATA.map((element) => element.grade).indexOf(nextGrade);
+    if (grade == 'G8') {
+      nextIndex = this.dataSource.data.length;
+    } 
+    
+    var cNextIndex = +index + +defaultNumber; 
+    console.log("index : " + +index + 1 + "nextIndex : " + nextIndex);
+    if (ELEMENT_DATA[index].highlighted) {
+      console.log("Has Value");
+      for (var _i = index; _i < nextIndex; _i++) {
+        console.log("index : " + _i);        
+        this.selection.deselect(ELEMENT_DATA[_i]);
+        ELEMENT_DATA[_i].highlighted = false;
+      }
+      this.selection.select(ELEMENT_DATA[currentIndex]);
+      ELEMENT_DATA[currentIndex].highlighted = true;
+    } else {
+      console.log("no Value");
+      for (var _i = index; _i < nextIndex; _i++) {
+        console.log("index : " + _i);
+        this.selection.select(ELEMENT_DATA[_i]);
+        ELEMENT_DATA[_i].highlighted = true;
+        
+      } 
+      this.selection.deselect(ELEMENT_DATA[currentIndex]);
+        ELEMENT_DATA[currentIndex].highlighted = false;
+    }
+
+      // for (var _i = index; _i < nextIndex; _i++) {
+      //   console.log("index : " + _i);
+      //   if(ELEMENT_DATA[_i].highlighted){
+      //     console.log("Has Value");
+      //     this.selection.deselect(ELEMENT_DATA[_i]);
+      //     ELEMENT_DATA[_i].highlighted = false;
+      //   } else {
+      //     console.log("No Value");
+      //   this.selection.select(ELEMENT_DATA[_i]);
+      //   ELEMENT_DATA[_i].highlighted = true; 
+    //      }
+    // }
+
+  }
+
+  /** Whether the number of selected elements matches the total number of rows. */
+  isAllSelected() {
+    const numSelected = this.selection.selected.length;
+    const numRows = this.dataSource.data.length;
+    return numSelected === numRows;
+  }
+
+  /** Selects all rows if they are not all selected; otherwise clear selection. */
+  masterToggle() {
+    this.isAllSelected() ?
+      this.dataSource.data.forEach(row => {
+        this.selection.clear(); row.highlighted = false;
+      }) :
+      this.dataSource.data.forEach(row => {
+        this.selection.select(row);
+        row.highlighted = true;
+      });
+  }
+
+  highlight(element: Element) {
+    element.highlighted = !element.highlighted;
+  }
+
+  onChecked (e,i:number) {
+   // const checkbox = e.target as HTMLInputElement;
+  
+    if (e.checked) {
+      console.log("Checked : "+i);
+     // this.selection.deselect(ELEMENT_DATA[i]);
+      ELEMENT_DATA[i].highlighted=false;
+    }else{
+   //   this.selection.select(ELEMENT_DATA[i]);
+      ELEMENT_DATA[i].highlighted=true;
+      console.log("Not Checked : "+i);
+     
+    }
+  }
+
 }
 
 export interface Element {
@@ -50,6 +141,8 @@ export interface Element {
   position: number;
   grade: string;
   salary: number;
+  highlighted?: boolean;
+  hovered?: boolean;
 }
 
 const ELEMENT_DATA: Element[] = [
